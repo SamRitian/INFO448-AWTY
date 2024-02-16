@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">AWTY</string>
+    <string name="message_hint">Message</string>
+    <string name="phone_number_hint">Phone Number 10 digits</string>
+    <string name="time_hint">Time in minute</string>
+    <string name="start_button">Start</string>
+    <string name="stop_button">Stop</string>
 </resources>
