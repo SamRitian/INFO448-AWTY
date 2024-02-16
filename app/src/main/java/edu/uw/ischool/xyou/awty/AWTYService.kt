@@ -47,7 +47,7 @@ class AWTYService : IntentService("AWTYService") {
             }
 
             try {
-                Thread.sleep((time * 1000).toLong())
+                Thread.sleep((time * 1000 * 60).toLong())
             } catch (e: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
