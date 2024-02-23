@@ -1,6 +1,7 @@
 package edu.uw.ischool.xyou.awty
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -8,9 +9,15 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.RelativeLayout
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlin.reflect.typeOf
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val PERMISSION_SEND_SMS = 123
+    }
 
     private val TAG = "MainActivity"
     private var started = false
@@ -18,42 +25,64 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Set up the start/stop button
-        val startStopButton = findViewById<Button>(R.id.start_stop_button)
-        if (started) startStopButton.text = getString(R.string.stop_button)
-        else startStopButton.text = getString(R.string.start_button)
-
+        val startStopButton: Button = findViewById(R.id.start_stop_button)
         startStopButton.setOnClickListener {
-            // get user input
-            val phoneNumber = findViewById<EditText>(R.id.phone_number_input).text.toString()
-            val message = findViewById<EditText>(R.id.message_input).text.toString()
-            val time = findViewById<EditText>(R.id.time_input).text.toString()
-
-            if (isValidInput(phoneNumber, message, time)) {
-                Log.i(TAG, "In this branch")
-                started = !started
-                if (started) {
-                    // Start the service
-                    startStopButton.text = getString(R.string.stop_button)
-                    val intent = Intent(this, AWTYService::class.java).apply {
-                        putExtra("phone_number", phoneNumber.toString())
-                        putExtra("message", message.toString())
-                        putExtra("time", time.toString())
-                    }
-                    startService(intent)
-                } else {
-                    // Stop the service
-                    startStopButton.text = getString(R.string.start_button)
-                    val intent = Intent(this, AWTYService::class.java)
-                    stopService(intent)
-                }
+            if (!started) {
+                checkForSmsPermission()
             } else {
-                Toast.makeText(this, "Invalid input", Toast.LENGTH_SHORT).show()
+                stopService()
             }
         }
     }
 
-    private fun isValidInput(phoneNumber: String, message: String, time: String): Boolean {
-        return phoneNumber.length == 10 && message != "" && time != ""
+    private fun checkForSmsPermission() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.SEND_SMS), PERMISSION_SEND_SMS)
+        } else {
+            startService()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_SEND_SMS -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    startService()
+                } else {
+                    Toast.makeText(this, "Permission denied to send SMS", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun startService() {
+        val phoneNumberInput: EditText = findViewById(R.id.phone_number_input)
+        val messageInput: EditText = findViewById(R.id.message_input)
+        val timeInput: EditText = findViewById(R.id.time_input)
+
+        val phoneNumber = phoneNumberInput.text.toString()
+        val message = messageInput.text.toString()
+        val timeInterval = timeInput.text.toString()
+
+        if (phoneNumber.isNotEmpty() && message.isNotEmpty() && timeInterval.isNotEmpty()) {
+            val intent = Intent(this, AWTYService::class.java).apply {
+                putExtra("phone_number", phoneNumber)
+                putExtra("message", message)
+                putExtra("time", timeInterval)
+            }
+            startService(intent)
+            started = true
+            findViewById<Button>(R.id.start_stop_button).text = getString(R.string.stop_button)
+        } else {
+            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopService() {
+        val intent = Intent(this, AWTYService::class.java)
+        stopService(intent)
+        started = false
+        findViewById<Button>(R.id.start_stop_button).text = getString(R.string.start_button)
     }
 }
